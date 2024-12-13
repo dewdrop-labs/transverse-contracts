@@ -42,7 +42,12 @@ contract Wallet {
     //             Private Function              //
     //////////////////////////////////////////////
 
-    function recordTransactionHistory() private {
-
+    function recordTransactionHistory(address _user, uint256 _amount, address _token) private {
+        Transaction memory newTransaction = Transaction({
+            amount: _amount,
+            token: _token
+        });
+    
+        transactions[_user].push(newTransaction);
     }
 }
