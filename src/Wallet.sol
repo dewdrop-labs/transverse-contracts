@@ -35,7 +35,7 @@ contract Wallet {
     ////////////////////////////////////////////
 
     function getTransactionHistory(address _user) external view returns (Transaction[] memory) {
-        return transactions[_user]
+        return transactions[_user];
     }
 
     ////////////////////////////////////////////////
