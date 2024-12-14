@@ -8,7 +8,7 @@ contract Wallet {
     IWorldID public worldID;
     IERC20 public usdt;
 
-    mapping(address => Transaction[]) transactions;
+    mapping(address => Transaction[]) public transactions;
     mapping(address => mapping(address => uint256)) token_balance;
 
     struct Transaction {
@@ -53,7 +53,7 @@ contract Wallet {
     ////////////////////////////////////////////
 
     function getTransactionHistory() external view returns (Transaction[] memory) {
-
+        return transactions[msg.sender];
     }
 
     ////////////////////////////////////////////////

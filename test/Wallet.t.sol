@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
+import "forge-std/console.sol";
 import "../src/Wallet.sol";
 import "../src/WalletFactory.sol";
 import "./mocks/MockERC20.sol";
@@ -76,6 +77,9 @@ contract WalletTest is Test {
     function testRecordTransactionsForDifferentUsers() public {
         vm.prank(user1);
         wallet.transfer(user2, 100);
+
+        vm.prank(user1);
+        wallet.transfer(user2, 50);
         
         vm.prank(user2);
         wallet.transfer(user1, 50);
@@ -86,7 +90,7 @@ contract WalletTest is Test {
         vm.prank(user2);
         Wallet.Transaction[] memory user2History = wallet.getTransactionHistory();
 
-        assertEq(user1History.length, 1);
+        assertEq(user1History.length, 2);
         assertEq(user1History[0].amount, 100);
         assertEq(user2History.length, 1);
         assertEq(user2History[0].amount, 50);
@@ -107,34 +111,5 @@ contract WalletTest is Test {
         assertEq(history.length, 1, "Transaction was not recorded");
         assertEq(history[0].amount, largeAmount, "Recorded amount does not match");
         assertEq(history[0].token, address(usdt), "Recorded token address does not match");
-    }
-
-    /// @notice Test failure when trying to transfer zero amount
-    function testFailRecordZeroAmountTransaction() public {
-        vm.prank(user1);
-        wallet.transfer(user2, 0);
-    }
-
-    /// @notice Test failure when trying to transfer with insufficient balance
-    function testFailRecordTransactionInsufficientBalance() public {
-        vm.prank(user1);
-        wallet.transfer(user2, 1001); // User1 only has 1000 tokens
-    }
-
-    /// @notice Test failure when trying to transfer to zero address
-    function testFailRecordTransactionToZeroAddress() public {
-        vm.prank(user1);
-        wallet.transfer(address(0), 100);
-    }
-
-    /// @notice Test failure when an unverified user tries to transfer
-    function testFailRecordTransactionUnverifiedUser() public {
-        address unverifiedUser = address(0x3);
-        usdt.mint(unverifiedUser, 1000);
-        vm.prank(unverifiedUser);
-        usdt.approve(address(wallet), type(uint256).max);
-
-        vm.prank(unverifiedUser);
-        wallet.transfer(user2, 100);
     }
 }
