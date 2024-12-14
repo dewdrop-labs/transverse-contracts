@@ -39,13 +39,13 @@ contract Wallet {
 
     }
 
-    function transfer(address recipient, uint256 amount) external onlyVerified(msg.sender) {
+    function transfer(address _recipient, uint256 _amount) external onlyVerified(msg.sender) {
+        require(_recipient != address(0), "Zero address detected");
+        require(usdt.balanceOf(msg.sender) >= _amount, "Insufficient balance");
+        require(_amount > 0, "Transfer amount must be greater than zero");
+        require(usdt.transferFrom(msg.sender, _recipient, _amount), "Transfer failed");
 
-        require(usdt.balanceOf(msg.sender) >= amount, "Insufficient balance");
-        require(amount > 0, "Transfer amount must be greater than zero");
-        require(usdt.transferFrom(msg.sender, recipient, amount), "Transfer failed");
-
-        recordTransactionHistory(msg.sender, amount, address(usdt));
+        recordTransactionHistory(msg.sender, _amount, address(usdt));
     }
 
     //////////////////////////////////////////////
