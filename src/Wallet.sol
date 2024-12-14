@@ -45,6 +45,7 @@ contract Wallet {
         require(amount > 0, "Transfer amount must be greater than zero");
         require(usdt.transferFrom(msg.sender, recipient, amount), "Transfer failed");
 
+        recordTransactionHistory(msg.sender, amount, address(usdt));
     }
 
     //////////////////////////////////////////////
