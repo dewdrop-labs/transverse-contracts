@@ -53,7 +53,7 @@ contract Wallet {
     ////////////////////////////////////////////
 
     function getTransactionHistory() external view returns (Transaction[] memory) {
-        return transactions[msg.sender];
+       
     }
 
     ////////////////////////////////////////////////
