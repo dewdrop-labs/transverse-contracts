@@ -7,6 +7,8 @@ import "../src/WalletFactory.sol";
 import "./mocks/MockERC20.sol";
 import "./mocks/MockWorldID.sol";
 
+/// @title Wallet Contract Test
+/// @notice This contract contains unit tests for the recordTransactionHistory function in the Wallet contract
 contract WalletTest is Test {
     Wallet public wallet;
     WalletFactory public factory;
@@ -16,6 +18,7 @@ contract WalletTest is Test {
     MockERC20 public usdt;
     MockWorldID public worldID;
 
+    /// @notice Set up the test environment before each test
     function setUp() public {
         owner = address(this);
         user1 = address(0x1);
@@ -41,6 +44,7 @@ contract WalletTest is Test {
         worldID.setVerified(user2, true);
     }
 
+    /// @notice Test recording a single transaction
     function testRecordSingleTransaction() public {
         vm.prank(user1);
         wallet.transfer(user2, 100);
@@ -52,6 +56,7 @@ contract WalletTest is Test {
         assertEq(history[0].token, address(usdt));
     }
 
+    /// @notice Test recording multiple transactions
     function testRecordMultipleTransactions() public {
         vm.startPrank(user1);
         wallet.transfer(user2, 100);
@@ -67,6 +72,7 @@ contract WalletTest is Test {
         assertEq(history[1].token, address(usdt));
     }
 
+    /// @notice Test recording transactions for different users
     function testRecordTransactionsForDifferentUsers() public {
         vm.prank(user1);
         wallet.transfer(user2, 100);
@@ -86,6 +92,7 @@ contract WalletTest is Test {
         assertEq(user2History[0].amount, 50);
     }
 
+    /// @notice Test recording a large amount transaction
     function testRecordLargeAmountTransaction() public {
         uint256 largeAmount = type(uint256).max / 2; // Use half of max to avoid overflow
         usdt.mint(user1, largeAmount);
@@ -102,21 +109,25 @@ contract WalletTest is Test {
         assertEq(history[0].token, address(usdt), "Recorded token address does not match");
     }
 
+    /// @notice Test failure when trying to transfer zero amount
     function testFailRecordZeroAmountTransaction() public {
         vm.prank(user1);
         wallet.transfer(user2, 0);
     }
 
+    /// @notice Test failure when trying to transfer with insufficient balance
     function testFailRecordTransactionInsufficientBalance() public {
         vm.prank(user1);
         wallet.transfer(user2, 1001); // User1 only has 1000 tokens
     }
 
+    /// @notice Test failure when trying to transfer to zero address
     function testFailRecordTransactionToZeroAddress() public {
         vm.prank(user1);
         wallet.transfer(address(0), 100);
     }
 
+    /// @notice Test failure when an unverified user tries to transfer
     function testFailRecordTransactionUnverifiedUser() public {
         address unverifiedUser = address(0x3);
         usdt.mint(unverifiedUser, 1000);
