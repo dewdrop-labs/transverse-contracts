@@ -5,8 +5,8 @@ import "./Wallet.sol";
 contract WalletFactory {
     Wallet[] wallets;
 
-    function createWallet() external returns (Wallet newWallet_, uint256 length_) {
-        newWallet_ = new Wallet(msg.sender);
+    function createWallet( address _worldID, address _usdt) external returns (Wallet newWallet_, uint256 length_) {
+        newWallet_ = new Wallet(msg.sender , _worldID,  _usdt);
 
         wallets.push(newWallet_);
 
