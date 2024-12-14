@@ -3,22 +3,127 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "../src/Wallet.sol";
+import "../src/WalletFactory.sol";
+import "./mocks/MockERC20.sol";
+import "./mocks/MockWorldID.sol";
 
 contract WalletTest is Test {
     Wallet public wallet;
+    WalletFactory public factory;
     address public owner;
     address public user1;
     address public user2;
-    address public token1;
-    address public token2;
+    MockERC20 public usdt;
+    MockWorldID public worldID;
 
     function setUp() public {
         owner = address(this);
         user1 = address(0x1);
         user2 = address(0x2);
-        token1 = address(0x3);
-        token2 = address(0x4);
+        usdt = new MockERC20("USDT", "USDT");
+        worldID = new MockWorldID();
 
-        wallet = new Wallet(owner);
+        factory = new WalletFactory();
+        (wallet, ) = factory.createWallet(address(worldID), address(usdt));
+
+        // Fund users
+        usdt.mint(user1, 1000);
+        usdt.mint(user2, 1000);
+
+        // Approve wallet for transfers
+        vm.prank(user1);
+        usdt.approve(address(wallet), type(uint256).max);
+        vm.prank(user2);
+        usdt.approve(address(wallet), type(uint256).max);
+
+        // Set users as verified in MockWorldID
+        worldID.setVerified(user1, true);
+        worldID.setVerified(user2, true);
+    }
+
+    function testRecordSingleTransaction() public {
+        vm.prank(user1);
+        wallet.transfer(user2, 100);
+
+        vm.prank(user1);
+        Wallet.Transaction[] memory history = wallet.getTransactionHistory();
+        assertEq(history.length, 1);
+        assertEq(history[0].amount, 100);
+        assertEq(history[0].token, address(usdt));
+    }
+
+    function testRecordMultipleTransactions() public {
+        vm.startPrank(user1);
+        wallet.transfer(user2, 100);
+        wallet.transfer(user2, 200);
+        
+        Wallet.Transaction[] memory history = wallet.getTransactionHistory();
+        vm.stopPrank();
+
+        assertEq(history.length, 2);
+        assertEq(history[0].amount, 100);
+        assertEq(history[0].token, address(usdt));
+        assertEq(history[1].amount, 200);
+        assertEq(history[1].token, address(usdt));
+    }
+
+    function testRecordTransactionsForDifferentUsers() public {
+        vm.prank(user1);
+        wallet.transfer(user2, 100);
+        
+        vm.prank(user2);
+        wallet.transfer(user1, 50);
+        
+        vm.prank(user1);
+        Wallet.Transaction[] memory user1History = wallet.getTransactionHistory();
+        
+        vm.prank(user2);
+        Wallet.Transaction[] memory user2History = wallet.getTransactionHistory();
+
+        assertEq(user1History.length, 1);
+        assertEq(user1History[0].amount, 100);
+        assertEq(user2History.length, 1);
+        assertEq(user2History[0].amount, 50);
+    }
+
+    function testRecordLargeAmountTransaction() public {
+        uint256 largeAmount = type(uint256).max / 2; // Use half of max to avoid overflow
+        usdt.mint(user1, largeAmount);
+
+        vm.startPrank(user1);
+        usdt.approve(address(wallet), largeAmount);
+        wallet.transfer(user2, largeAmount);
+
+        Wallet.Transaction[] memory history = wallet.getTransactionHistory();
+        vm.stopPrank();
+
+        assertEq(history.length, 1, "Transaction was not recorded");
+        assertEq(history[0].amount, largeAmount, "Recorded amount does not match");
+        assertEq(history[0].token, address(usdt), "Recorded token address does not match");
+    }
+
+    function testFailRecordZeroAmountTransaction() public {
+        vm.prank(user1);
+        wallet.transfer(user2, 0);
+    }
+
+    function testFailRecordTransactionInsufficientBalance() public {
+        vm.prank(user1);
+        wallet.transfer(user2, 1001); // User1 only has 1000 tokens
+    }
+
+    function testFailRecordTransactionToZeroAddress() public {
+        vm.prank(user1);
+        wallet.transfer(address(0), 100);
+    }
+
+    function testFailRecordTransactionUnverifiedUser() public {
+        address unverifiedUser = address(0x3);
+        usdt.mint(unverifiedUser, 1000);
+        vm.prank(unverifiedUser);
+        usdt.approve(address(wallet), type(uint256).max);
+
+        vm.prank(unverifiedUser);
+        wallet.transfer(user2, 100);
     }
 }
