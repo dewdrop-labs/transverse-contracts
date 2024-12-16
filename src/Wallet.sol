@@ -8,7 +8,7 @@ contract Wallet {
     IWorldID public worldID;
     IERC20 public usdt;
 
-    mapping(address => Transaction[]) transactions;
+    mapping(address => Transaction[]) public transactions;
     mapping(address => mapping(address => uint256)) token_balance;
 
     struct Transaction {
@@ -39,17 +39,19 @@ contract Wallet {
 
     }
 
-    function transfer(address recipient, uint256 amount) external onlyVerified(msg.sender) {
+    function transfer(address _recipient, uint256 _amount) external onlyVerified(msg.sender) {
+        require(_recipient != address(0), "Zero address detected");
+        require(usdt.balanceOf(msg.sender) >= _amount, "Insufficient balance");
+        require(_amount > 0, "Transfer amount must be greater than zero");
+        require(usdt.transferFrom(msg.sender, _recipient, _amount), "Transfer failed");
 
-        require(usdt.balanceOf(msg.sender) >= amount, "Insufficient balance");
-        require(amount > 0, "Transfer amount must be greater than zero");
-        require(usdt.transferFrom(msg.sender, recipient, amount), "Transfer failed");
-
+        recordTransactionHistory(msg.sender, _amount, address(usdt));
     }
 
     //////////////////////////////////////////////
     //             View Functions              //
     ////////////////////////////////////////////
+
 
     function getTransactionHistory(address _user) external view returns (Transaction[] memory) {
         return transactions[_user];
@@ -59,7 +61,12 @@ contract Wallet {
     //             Private Function              //
     //////////////////////////////////////////////
 
-    function recordTransactionHistory() private {
-
+    function recordTransactionHistory(address _user, uint256 _amount, address _token) private {
+        Transaction memory newTransaction = Transaction({
+            amount: _amount,
+            token: _token
+        });
+    
+        transactions[_user].push(newTransaction);
     }
 }
