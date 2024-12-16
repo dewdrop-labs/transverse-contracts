@@ -51,7 +51,7 @@ contract WalletTest is Test {
         wallet.transfer(user2, 100);
 
         vm.prank(user1);
-        Wallet.Transaction[] memory history = wallet.getTransactionHistory();
+        Wallet.Transaction[] memory history = wallet.getTransactionHistory(user1);
         assertEq(history.length, 1);
         assertEq(history[0].amount, 100);
         assertEq(history[0].token, address(usdt));
@@ -63,7 +63,7 @@ contract WalletTest is Test {
         wallet.transfer(user2, 100);
         wallet.transfer(user2, 200);
 
-        Wallet.Transaction[] memory history = wallet.getTransactionHistory();
+        Wallet.Transaction[] memory history = wallet.getTransactionHistory(user1);
         vm.stopPrank();
 
         assertEq(history.length, 2);
@@ -85,10 +85,10 @@ contract WalletTest is Test {
         wallet.transfer(user1, 50);
 
         vm.prank(user1);
-        Wallet.Transaction[] memory user1History = wallet.getTransactionHistory();
+        Wallet.Transaction[] memory user1History = wallet.getTransactionHistory(user1);
 
         vm.prank(user2);
-        Wallet.Transaction[] memory user2History = wallet.getTransactionHistory();
+        Wallet.Transaction[] memory user2History = wallet.getTransactionHistory(user2);
 
         assertEq(user1History.length, 2);
         assertEq(user1History[0].amount, 100);
@@ -105,7 +105,7 @@ contract WalletTest is Test {
         usdt.approve(address(wallet), largeAmount);
         wallet.transfer(user2, largeAmount);
 
-        Wallet.Transaction[] memory history = wallet.getTransactionHistory();
+        Wallet.Transaction[] memory history = wallet.getTransactionHistory(user1);
         vm.stopPrank();
 
         assertEq(history.length, 1, "Transaction was not recorded");
