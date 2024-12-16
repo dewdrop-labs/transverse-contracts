@@ -89,12 +89,11 @@ contract USDTTransferTest is Test {
     uint256 private initialBalance = 1000e18;
     address _owner = address(this);
 
-
     // Setup function to deploy mocks and the transfer contract
     function setUp() public {
         mockWorldID = new MockWorldIDContract();
         mockUSDT = new MockERC20Token();
-        transferContract = new Wallet(address(_owner), address(mockWorldID),  address(mockUSDT));
+        transferContract = new Wallet(address(_owner), address(mockWorldID), address(mockUSDT));
 
         // Mint some USDT for user1
         mockUSDT.mint(user1, initialBalance);

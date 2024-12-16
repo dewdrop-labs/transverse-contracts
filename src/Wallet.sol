@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
+
 import "./interfaces/IERC20.sol";
 import "./IWorldID.sol";
 
@@ -16,7 +17,7 @@ contract Wallet {
         address token;
     }
 
-    modifier onlyOwner {
+    modifier onlyOwner() {
         require(msg.sender == owner, "not owner");
         _;
     }
@@ -27,17 +28,14 @@ contract Wallet {
         _;
     }
 
-
     constructor(address _owner, address _worldID, address _usdt) {
         require(msg.sender != address(0), "zero address found");
         owner = _owner;
-         worldID = IWorldID(_worldID);
+        worldID = IWorldID(_worldID);
         usdt = IERC20(_usdt);
     }
 
-    function createWorldId() onlyOwner external {
-
-    }
+    function createWorldId() external onlyOwner {}
 
     function transfer(address _recipient, uint256 _amount) external onlyVerified(msg.sender) {
         require(_recipient != address(0), "Zero address detected");
@@ -52,7 +50,6 @@ contract Wallet {
     //             View Functions              //
     ////////////////////////////////////////////
 
-
     function getTransactionHistory(address _user) external view returns (Transaction[] memory) {
         return transactions[_user];
     }
@@ -62,11 +59,8 @@ contract Wallet {
     //////////////////////////////////////////////
 
     function recordTransactionHistory(address _user, uint256 _amount, address _token) private {
-        Transaction memory newTransaction = Transaction({
-            amount: _amount,
-            token: _token
-        });
-    
+        Transaction memory newTransaction = Transaction({amount: _amount, token: _token});
+
         transactions[_user].push(newTransaction);
     }
 }

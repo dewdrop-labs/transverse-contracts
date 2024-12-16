@@ -10,13 +10,12 @@ contract WalletFactoryTest is Test {
     MockERC20Token public mockUSDT;
     MockWorldIDContract public mockWorldID;
 
-
     function setUp() public {
         factory = new WalletFactory();
     }
 
     function test_CreateWallet() public {
-        factory.createWallet(address (mockWorldID), address(mockUSDT));
+        factory.createWallet(address(mockWorldID), address(mockUSDT));
 
         assertEq(factory.getWalletClones().length, 1);
     }

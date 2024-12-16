@@ -28,7 +28,7 @@ contract WalletTest is Test {
         worldID = new MockWorldID();
 
         factory = new WalletFactory();
-        (wallet, ) = factory.createWallet(address(worldID), address(usdt));
+        (wallet,) = factory.createWallet(address(worldID), address(usdt));
 
         // Fund users
         usdt.mint(user1, 1000);
@@ -62,7 +62,7 @@ contract WalletTest is Test {
         vm.startPrank(user1);
         wallet.transfer(user2, 100);
         wallet.transfer(user2, 200);
-        
+
         Wallet.Transaction[] memory history = wallet.getTransactionHistory();
         vm.stopPrank();
 
@@ -80,13 +80,13 @@ contract WalletTest is Test {
 
         vm.prank(user1);
         wallet.transfer(user2, 50);
-        
+
         vm.prank(user2);
         wallet.transfer(user1, 50);
-        
+
         vm.prank(user1);
         Wallet.Transaction[] memory user1History = wallet.getTransactionHistory();
-        
+
         vm.prank(user2);
         Wallet.Transaction[] memory user2History = wallet.getTransactionHistory();
 
