@@ -48,7 +48,7 @@ contract WalletTest is Test {
     /// @notice Test recording a single transaction
     function testRecordSingleTransaction() public {
         vm.prank(user1);
-        wallet.transfer(user2, 100);
+        wallet.transfer(user2, address(usdt), 100);
 
         vm.prank(user1);
         Wallet.Transaction[] memory history = wallet.getTransactionHistory(user1);
@@ -60,8 +60,8 @@ contract WalletTest is Test {
     /// @notice Test recording multiple transactions
     function testRecordMultipleTransactions() public {
         vm.startPrank(user1);
-        wallet.transfer(user2, 100);
-        wallet.transfer(user2, 200);
+        wallet.transfer(user2, address(usdt), 100);
+        wallet.transfer(user2, address(usdt), 200);
 
         Wallet.Transaction[] memory history = wallet.getTransactionHistory(user1);
         vm.stopPrank();
@@ -76,13 +76,13 @@ contract WalletTest is Test {
     /// @notice Test recording transactions for different users
     function testRecordTransactionsForDifferentUsers() public {
         vm.prank(user1);
-        wallet.transfer(user2, 100);
+        wallet.transfer(user2, address(usdt), 100);
 
         vm.prank(user1);
-        wallet.transfer(user2, 50);
+        wallet.transfer(user2, address(usdt), 50);
 
         vm.prank(user2);
-        wallet.transfer(user1, 50);
+        wallet.transfer(user1, address(usdt), 50);
 
         vm.prank(user1);
         Wallet.Transaction[] memory user1History = wallet.getTransactionHistory(user1);
@@ -103,7 +103,7 @@ contract WalletTest is Test {
 
         vm.startPrank(user1);
         usdt.approve(address(wallet), largeAmount);
-        wallet.transfer(user2, largeAmount);
+        wallet.transfer(user2, address(usdt), largeAmount);
 
         Wallet.Transaction[] memory history = wallet.getTransactionHistory(user1);
         vm.stopPrank();
