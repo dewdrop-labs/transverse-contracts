@@ -29,28 +29,36 @@ contract Wallet {
         _;
     }
 
+    modifier onlySupportedToken(address _token) {
+        require(supportedTokens[_token], "Token not supported");
+        _;
+    }
+
     constructor(address _owner, address _worldID, address _usdt) {
         require(msg.sender != address(0), "zero address found");
         owner = _owner;
         worldID = IWorldID(_worldID);
         usdt = IERC20(_usdt);
+        supportedTokens[_usdt] = true; // Add USDT as a default supported token
     }
 
     function createWorldId() external onlyOwner {}
 
     function transfer(
         address _recipient,
+        address _token,
         uint256 _amount
-    ) external onlyVerified(msg.sender) {
+    ) external onlyVerified(msg.sender) onlySupportedToken(_token) {
         require(_recipient != address(0), "Zero address detected");
-        require(usdt.balanceOf(msg.sender) >= _amount, "Insufficient balance");
+        IERC20 token = IERC20(_token);
+        require(token.balanceOf(msg.sender) >= _amount, "Insufficient balance");
         require(_amount > 0, "Transfer amount must be greater than zero");
         require(
-            usdt.transferFrom(msg.sender, _recipient, _amount),
+            token.transferFrom(msg.sender, _recipient, _amount),
             "Transfer failed"
         );
 
-        recordTransactionHistory(msg.sender, _amount, address(usdt));
+        recordTransactionHistory(msg.sender, _amount, _token);
     }
 
     function addSupportedToken(address _token) external onlyOwner {
