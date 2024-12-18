@@ -44,19 +44,16 @@ contract Wallet {
 
     function createWorldId() external onlyOwner {}
 
-    function transfer(
-        address _recipient,
-        address _token,
-        uint256 _amount
-    ) external onlyVerified(msg.sender) onlySupportedToken(_token) {
+    function transfer(address _recipient, address _token, uint256 _amount)
+        external
+        onlyVerified(msg.sender)
+        onlySupportedToken(_token)
+    {
         require(_recipient != address(0), "Zero address detected");
         IERC20 token = IERC20(_token);
         require(token.balanceOf(msg.sender) >= _amount, "Insufficient balance");
         require(_amount > 0, "Transfer amount must be greater than zero");
-        require(
-            token.transferFrom(msg.sender, _recipient, _amount),
-            "Transfer failed"
-        );
+        require(token.transferFrom(msg.sender, _recipient, _amount), "Transfer failed");
 
         recordTransactionHistory(msg.sender, _amount, _token);
     }
@@ -75,9 +72,7 @@ contract Wallet {
     //             View Functions              //
     ////////////////////////////////////////////
 
-    function getTransactionHistory(
-        address _user
-    ) external view returns (Transaction[] memory) {
+    function getTransactionHistory(address _user) external view returns (Transaction[] memory) {
         return transactions[_user];
     }
 
@@ -85,15 +80,8 @@ contract Wallet {
     //             Private Function              //
     //////////////////////////////////////////////
 
-    function recordTransactionHistory(
-        address _user,
-        uint256 _amount,
-        address _token
-    ) private {
-        Transaction memory newTransaction = Transaction({
-            amount: _amount,
-            token: _token
-        });
+    function recordTransactionHistory(address _user, uint256 _amount, address _token) private {
+        Transaction memory newTransaction = Transaction({amount: _amount, token: _token});
 
         transactions[_user].push(newTransaction);
     }
