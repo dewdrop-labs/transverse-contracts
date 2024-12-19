@@ -121,7 +121,7 @@ contract USDTTransferTest is Test {
 
         // Perform the transfer
         vm.prank(user1);
-        transferContract.transfer(user2, transferAmount);
+        transferContract.transfer(user2, address(mockUSDT), transferAmount);
 
         // Assert balances after transfer
         assertEq(mockUSDT.balanceOf(user1), user1BalanceBefore - transferAmount);
@@ -134,7 +134,7 @@ contract USDTTransferTest is Test {
 
         vm.prank(user1);
         vm.expectRevert("Insufficient balance");
-        transferContract.transfer(user2, transferAmount);
+        transferContract.transfer(user2, address(mockUSDT), transferAmount);
     }
 
     // Test transfer function - Unverified user
@@ -146,7 +146,7 @@ contract USDTTransferTest is Test {
 
         vm.prank(user1);
         vm.expectRevert("User not verified");
-        transferContract.transfer(user2, transferAmount);
+        transferContract.transfer(user2, address(mockUSDT), transferAmount);
     }
 
     // Test transfer function - Transfer to unverified recipient
@@ -157,7 +157,7 @@ contract USDTTransferTest is Test {
 
         vm.expectRevert("User not verified");
 
-        transferContract.transfer(user2, transferAmount);
+        transferContract.transfer(user2, address(mockUSDT), transferAmount);
     }
 
     // Test transfer function - Multiple consecutive transfers
@@ -171,7 +171,7 @@ contract USDTTransferTest is Test {
 
         // First transfer
         vm.prank(user1);
-        transferContract.transfer(user2, transferAmount1);
+        transferContract.transfer(user2, address(mockUSDT), transferAmount1);
 
         // Assert balances after first transfer
         assertEq(mockUSDT.balanceOf(user1), user1BalanceBefore - transferAmount1);
@@ -182,7 +182,7 @@ contract USDTTransferTest is Test {
         user2BalanceBefore = mockUSDT.balanceOf(user2);
 
         vm.prank(user1);
-        transferContract.transfer(user2, transferAmount2);
+        transferContract.transfer(user2, address(mockUSDT), transferAmount2);
 
         assertEq(mockUSDT.balanceOf(user1), user1BalanceBefore - transferAmount2);
         assertEq(mockUSDT.balanceOf(user2), user2BalanceBefore + transferAmount2);
@@ -195,6 +195,6 @@ contract USDTTransferTest is Test {
         vm.prank(user1);
 
         vm.expectRevert("Transfer amount must be greater than zero");
-        transferContract.transfer(user2, transferAmount);
+        transferContract.transfer(user2, address(mockUSDT), transferAmount);
     }
 }

@@ -16,7 +16,9 @@ contract WalletTest is Test {
     address public owner;
     address public user1;
     address public user2;
+    address public nonOwner;
     MockERC20 public usdt;
+    MockERC20 public anotherToken;
     MockWorldID public worldID;
 
     /// @notice Set up the test environment before each test
@@ -24,7 +26,10 @@ contract WalletTest is Test {
         owner = address(this);
         user1 = address(0x1);
         user2 = address(0x2);
+        nonOwner = address(0x999);
         usdt = new MockERC20("USDT", "USDT");
+        anotherToken = new MockERC20("Another Token", "ATKN");
+
         worldID = new MockWorldID();
 
         factory = new WalletFactory();
@@ -48,7 +53,7 @@ contract WalletTest is Test {
     /// @notice Test recording a single transaction
     function testRecordSingleTransaction() public {
         vm.prank(user1);
-        wallet.transfer(user2, 100);
+        wallet.transfer(user2, address(usdt), 100);
 
         vm.prank(user1);
         Wallet.Transaction[] memory history = wallet.getTransactionHistory(user1);
@@ -60,8 +65,8 @@ contract WalletTest is Test {
     /// @notice Test recording multiple transactions
     function testRecordMultipleTransactions() public {
         vm.startPrank(user1);
-        wallet.transfer(user2, 100);
-        wallet.transfer(user2, 200);
+        wallet.transfer(user2, address(usdt), 100);
+        wallet.transfer(user2, address(usdt), 200);
 
         Wallet.Transaction[] memory history = wallet.getTransactionHistory(user1);
         vm.stopPrank();
@@ -76,13 +81,13 @@ contract WalletTest is Test {
     /// @notice Test recording transactions for different users
     function testRecordTransactionsForDifferentUsers() public {
         vm.prank(user1);
-        wallet.transfer(user2, 100);
+        wallet.transfer(user2, address(usdt), 100);
 
         vm.prank(user1);
-        wallet.transfer(user2, 50);
+        wallet.transfer(user2, address(usdt), 50);
 
         vm.prank(user2);
-        wallet.transfer(user1, 50);
+        wallet.transfer(user1, address(usdt), 50);
 
         vm.prank(user1);
         Wallet.Transaction[] memory user1History = wallet.getTransactionHistory(user1);
@@ -103,7 +108,7 @@ contract WalletTest is Test {
 
         vm.startPrank(user1);
         usdt.approve(address(wallet), largeAmount);
-        wallet.transfer(user2, largeAmount);
+        wallet.transfer(user2, address(usdt), largeAmount);
 
         Wallet.Transaction[] memory history = wallet.getTransactionHistory(user1);
         vm.stopPrank();
@@ -111,5 +116,44 @@ contract WalletTest is Test {
         assertEq(history.length, 1, "Transaction was not recorded");
         assertEq(history[0].amount, largeAmount, "Recorded amount does not match");
         assertEq(history[0].token, address(usdt), "Recorded token address does not match");
+    }
+
+    function testAddSupportedTokenByOwner() public {
+        vm.prank(owner); // Set the caller as the owner
+        wallet.addSupportedToken(address(anotherToken));
+
+        assertTrue(wallet.supportedTokens(address(anotherToken)));
+    }
+
+    function testAddSupportedTokenByNonOwnerReverts() public {
+        vm.prank(nonOwner);
+        vm.expectRevert("not owner");
+        wallet.addSupportedToken(address(anotherToken));
+    }
+
+    function testRemoveSupportedTokenByOwner() public {
+        vm.startPrank(owner); // Start a transaction as the owner
+        wallet.addSupportedToken(address(anotherToken));
+        assertTrue(wallet.supportedTokens(address(anotherToken)));
+
+        wallet.removeSupportedToken(address(anotherToken));
+        assertFalse(wallet.supportedTokens(address(anotherToken)));
+        vm.stopPrank();
+    }
+
+    function testRemoveSupportedTokenByNonOwnerReverts() public {
+        vm.startPrank(owner);
+        wallet.addSupportedToken(address(anotherToken));
+        vm.stopPrank();
+
+        vm.prank(nonOwner);
+        vm.expectRevert("not owner");
+        wallet.removeSupportedToken(address(anotherToken));
+    }
+
+    function testRemoveNonSupportedTokenReverts() public {
+        vm.prank(owner);
+        vm.expectRevert("Token not supported");
+        wallet.removeSupportedToken(address(anotherToken));
     }
 }
