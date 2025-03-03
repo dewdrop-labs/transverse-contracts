@@ -19,7 +19,7 @@ contract WalletTest is Test {
     address public nonOwner;
     MockERC20 public usdt;
     MockERC20 public anotherToken;
-    MockWorldID public worldID;
+    MockWorldID public mockWorldID;
 
     /// @notice Set up the test environment before each test
     function setUp() public {
@@ -30,10 +30,10 @@ contract WalletTest is Test {
         usdt = new MockERC20("USDT", "USDT");
         anotherToken = new MockERC20("Another Token", "ATKN");
 
-        worldID = new MockWorldID();
+        mockWorldID = new MockWorldID();
 
         factory = new WalletFactory();
-        (wallet,) = factory.createWallet(address(worldID), address(usdt));
+        (wallet,) = factory.createWallet(address(mockWorldID), address(usdt));
 
         // Fund users
         usdt.mint(user1, 1000);
@@ -45,15 +45,14 @@ contract WalletTest is Test {
         vm.prank(user2);
         usdt.approve(address(wallet), type(uint256).max);
 
-        // Set users as verified in MockWorldID
-        worldID.setVerified(user1, true);
-        worldID.setVerified(user2, true);
     }
 
     /// @notice Test recording a single transaction
     function testRecordSingleTransaction() public {
+        bytes memory validZkProof = mockWorldID.generateZkProof(uint256(keccak256("some seed")), true);
+
         vm.prank(user1);
-        wallet.transfer(user2, address(usdt), 100);
+        wallet.transfer(user2, address(usdt), 100, validZkProof);
 
         vm.prank(user1);
         Wallet.Transaction[] memory history = wallet.getTransactionHistory(user1);
@@ -64,9 +63,12 @@ contract WalletTest is Test {
 
     /// @notice Test recording multiple transactions
     function testRecordMultipleTransactions() public {
+        bytes memory validZkProof = mockWorldID.generateZkProof(uint256(keccak256("some seed")), true);
         vm.startPrank(user1);
-        wallet.transfer(user2, address(usdt), 100);
-        wallet.transfer(user2, address(usdt), 200);
+        wallet.transfer(user2, address(usdt), 100, validZkProof);
+        
+        validZkProof = mockWorldID.generateZkProof(uint256(keccak256("some other seed")), true);
+        wallet.transfer(user2, address(usdt), 200, validZkProof);
 
         Wallet.Transaction[] memory history = wallet.getTransactionHistory(user1);
         vm.stopPrank();
@@ -80,14 +82,17 @@ contract WalletTest is Test {
 
     /// @notice Test recording transactions for different users
     function testRecordTransactionsForDifferentUsers() public {
+        bytes memory validZkProof = mockWorldID.generateZkProof(uint256(keccak256("some seed")), true);
         vm.prank(user1);
-        wallet.transfer(user2, address(usdt), 100);
+        wallet.transfer(user2, address(usdt), 100, validZkProof);
 
+        validZkProof = mockWorldID.generateZkProof(uint256(keccak256("some other seed")), true);
         vm.prank(user1);
-        wallet.transfer(user2, address(usdt), 50);
+        wallet.transfer(user2, address(usdt), 50, validZkProof);
 
+        validZkProof = mockWorldID.generateZkProof(uint256(keccak256("some other one seed")), true);
         vm.prank(user2);
-        wallet.transfer(user1, address(usdt), 50);
+        wallet.transfer(user1, address(usdt), 50, validZkProof);
 
         vm.prank(user1);
         Wallet.Transaction[] memory user1History = wallet.getTransactionHistory(user1);
@@ -103,12 +108,13 @@ contract WalletTest is Test {
 
     /// @notice Test recording a large amount transaction
     function testRecordLargeAmountTransaction() public {
+        bytes memory validZkProof = mockWorldID.generateZkProof(uint256(keccak256("some seed")), true);
         uint256 largeAmount = type(uint256).max / 2; // Use half of max to avoid overflow
         usdt.mint(user1, largeAmount);
 
         vm.startPrank(user1);
         usdt.approve(address(wallet), largeAmount);
-        wallet.transfer(user2, address(usdt), largeAmount);
+        wallet.transfer(user2, address(usdt), largeAmount, validZkProof);
 
         Wallet.Transaction[] memory history = wallet.getTransactionHistory(user1);
         vm.stopPrank();

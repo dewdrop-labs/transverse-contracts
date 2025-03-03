@@ -6,19 +6,7 @@ import "../src/interfaces/IERC20.sol";
 
 import "../src/Wallet.sol";
 import "../src/IWorldID.sol";
-
-// MockWorldID contract
-contract MockWorldIDContract is IWorldID {
-    mapping(address => bool) public verifiedUsers;
-
-    function verifyIdentity(address user) external view override returns (bool) {
-        return verifiedUsers[user];
-    }
-
-    function setVerified(address user, bool verified) public {
-        verifiedUsers[user] = verified;
-    }
-}
+import {MockWorldID} from "test/mocks/MockWorldID.sol";
 
 // MockERC20Token contract
 contract MockERC20Token is IERC20 {
@@ -83,7 +71,7 @@ contract MockERC20Token is IERC20 {
 contract USDTTransferTest is Test {
     Wallet private transferContract;
     MockERC20Token private mockUSDT;
-    MockWorldIDContract private mockWorldID;
+    MockWorldID private mockWorldID;
     address private user1 = address(0x1);
     address private user2 = address(0x2);
     uint256 private initialBalance = 1000e18;
@@ -91,9 +79,10 @@ contract USDTTransferTest is Test {
 
     // Setup function to deploy mocks and the transfer contract
     function setUp() public {
-        mockWorldID = new MockWorldIDContract();
+        mockWorldID = new MockWorldID();
+
         mockUSDT = new MockERC20Token();
-        transferContract = new Wallet(address(_owner), address(mockWorldID), address(mockUSDT));
+        transferContract = new Wallet(_owner, address(mockWorldID), address(mockUSDT));
 
         // Mint some USDT for user1
         mockUSDT.mint(user1, initialBalance);
@@ -101,16 +90,13 @@ contract USDTTransferTest is Test {
         // Approve transferContract to spend user1's tokens
         vm.prank(user1);
         mockUSDT.approve(address(transferContract), initialBalance);
-
-        // Set World ID verification for user1
-        mockWorldID.setVerified(user1, true);
     }
 
     // Test constructor - Verifying contract state after deployment
     function testConstructor() public view {
         assertEq(transferContract.owner(), address(this));
         assertEq(address(transferContract.worldID()), address(mockWorldID));
-        assertEq(address(transferContract.usdt()), address(mockUSDT));
+        assertTrue(transferContract.supportedTokens(address(mockUSDT)));
     }
 
     // Test transfer function - Successful transfer
@@ -118,10 +104,11 @@ contract USDTTransferTest is Test {
         uint256 transferAmount = 100e18;
         uint256 user1BalanceBefore = mockUSDT.balanceOf(user1);
         uint256 user2BalanceBefore = mockUSDT.balanceOf(user2);
+        bytes memory validZkProof = mockWorldID.generateZkProof(uint256(keccak256("some seed")), true);
 
         // Perform the transfer
         vm.prank(user1);
-        transferContract.transfer(user2, address(mockUSDT), transferAmount);
+        transferContract.transfer(user2, address(mockUSDT), transferAmount, validZkProof);
 
         // Assert balances after transfer
         assertEq(mockUSDT.balanceOf(user1), user1BalanceBefore - transferAmount);
@@ -131,39 +118,43 @@ contract USDTTransferTest is Test {
     // Test transfer function - Insufficient balance
     function testTransferInsufficientBalance() public {
         uint256 transferAmount = initialBalance + 1e18;
+        bytes memory validZkProof = mockWorldID.generateZkProof(uint256(keccak256("some seed")), true);
 
         vm.prank(user1);
         vm.expectRevert("Insufficient balance");
-        transferContract.transfer(user2, address(mockUSDT), transferAmount);
+        transferContract.transfer(user2, address(mockUSDT), transferAmount, validZkProof);
     }
 
     // Test transfer function - Unverified user
     function testTransferUnverifiedUser() public {
         uint256 transferAmount = 100e18;
+        bytes memory invalidZkProof = mockWorldID.generateZkProof(uint256(keccak256("some seed")), false);
 
-        // Set user1 as unverified
-        mockWorldID.setVerified(user1, false);
-
+        // Expect revert with specific reason
+        vm.expectRevert("NonExistentRoot or ExpiredRoot");
         vm.prank(user1);
-        vm.expectRevert("User not verified");
-        transferContract.transfer(user2, address(mockUSDT), transferAmount);
+        transferContract.transfer(user2, address(mockUSDT), transferAmount, invalidZkProof);
     }
 
-    // Test transfer function - Transfer to unverified recipient
-    function testTransferToUnverifiedRecipient() public {
+    // Test transfer function - Transfer with used proof should revert
+    function testTransferWithUsedProofReverts() public {
         uint256 transferAmount = 100e18;
+        bytes memory validZkProof = mockWorldID.generateZkProof(uint256(keccak256("some seed")), true);
 
-        mockWorldID.setVerified(user2, false);
+        vm.prank(user1);
+        transferContract.transfer(user2, address(mockUSDT), transferAmount, validZkProof);
 
-        vm.expectRevert("User not verified");
-
-        transferContract.transfer(user2, address(mockUSDT), transferAmount);
+        // Expect revert with specific reason
+        vm.expectRevert("Invalid Nullifier");
+        vm.prank(user1);
+        transferContract.transfer(user2, address(mockUSDT), transferAmount, validZkProof);
     }
 
     // Test transfer function - Multiple consecutive transfers
     function testMultipleConsecutiveTransfers() public {
         uint256 transferAmount1 = 100e18;
         uint256 transferAmount2 = 50e18;
+        bytes memory validZkProof = mockWorldID.generateZkProof(uint256(keccak256("some seed")), true);
 
         // User1's initial balance
         uint256 user1BalanceBefore = mockUSDT.balanceOf(user1);
@@ -171,7 +162,7 @@ contract USDTTransferTest is Test {
 
         // First transfer
         vm.prank(user1);
-        transferContract.transfer(user2, address(mockUSDT), transferAmount1);
+        transferContract.transfer(user2, address(mockUSDT), transferAmount1, validZkProof);
 
         // Assert balances after first transfer
         assertEq(mockUSDT.balanceOf(user1), user1BalanceBefore - transferAmount1);
@@ -181,8 +172,9 @@ contract USDTTransferTest is Test {
         user1BalanceBefore = mockUSDT.balanceOf(user1);
         user2BalanceBefore = mockUSDT.balanceOf(user2);
 
+        validZkProof = mockWorldID.generateZkProof(uint256(keccak256("some other seed")), true);
         vm.prank(user1);
-        transferContract.transfer(user2, address(mockUSDT), transferAmount2);
+        transferContract.transfer(user2, address(mockUSDT), transferAmount2, validZkProof);
 
         assertEq(mockUSDT.balanceOf(user1), user1BalanceBefore - transferAmount2);
         assertEq(mockUSDT.balanceOf(user2), user2BalanceBefore + transferAmount2);
@@ -191,10 +183,11 @@ contract USDTTransferTest is Test {
     // Test transfer function - Zero amount transfer
     function testTransferZeroAmount() public {
         uint256 transferAmount = 0;
+        bytes memory validZkProof = mockWorldID.generateZkProof(uint256(keccak256("some seed")), true);
 
         vm.prank(user1);
 
         vm.expectRevert("Transfer amount must be greater than zero");
-        transferContract.transfer(user2, address(mockUSDT), transferAmount);
+        transferContract.transfer(user2, address(mockUSDT), transferAmount, validZkProof);
     }
 }

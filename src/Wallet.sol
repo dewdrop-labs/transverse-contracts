@@ -5,13 +5,13 @@ import "./interfaces/IERC20.sol";
 import "./IWorldID.sol";
 
 contract Wallet {
-    address public owner;
-    IWorldID public worldID;
-    IERC20 public usdt;
+    address public immutable owner;
+    IWorldID public immutable worldID;
 
     mapping(address => Transaction[]) public transactions;
     mapping(address => mapping(address => uint256)) token_balance;
     mapping(address => bool) public supportedTokens;
+    mapping(uint256 => bool) public nullifierHashes;
 
     struct Transaction {
         uint256 amount;
@@ -23,9 +23,15 @@ contract Wallet {
         _;
     }
 
-    // Modifier to ensure that only verified users can call the function
-    modifier onlyVerified(address user) {
-        require(worldID.verifyIdentity(user), "User not verified");
+    // Modifier to ensure that only users with a valid ZK proof can call the function
+    modifier onlyValidProof(bytes calldata _zkProof) {
+        {
+            (uint256 _root, uint256 _signalHash, uint256 _nullifierHash, uint256 _externalNullifierHash, uint256[8] memory _proof) 
+            = abi.decode(_zkProof,(uint256, uint256, uint256, uint256, uint256[8]));
+            if (nullifierHashes[_nullifierHash]) revert("Invalid Nullifier");
+            worldID.verifyProof(_root, _signalHash, _nullifierHash, _externalNullifierHash,_proof);
+            nullifierHashes[_nullifierHash] = true;
+        }
         _;
     }
 
@@ -38,15 +44,12 @@ contract Wallet {
         require(msg.sender != address(0), "zero address found");
         owner = _owner;
         worldID = IWorldID(_worldID);
-        usdt = IERC20(_usdt);
         supportedTokens[_usdt] = true; // Add USDT as a default supported token
     }
 
-    function createWorldId() external onlyOwner {}
-
-    function transfer(address _recipient, address _token, uint256 _amount)
-        external
-        onlyVerified(msg.sender)
+    function transfer(address _recipient, address _token, uint256 _amount, bytes calldata _zkProof)
+        external 
+        onlyValidProof(_zkProof) 
         onlySupportedToken(_token)
     {
         require(_recipient != address(0), "Zero address detected");
